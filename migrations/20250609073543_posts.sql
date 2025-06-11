@@ -1,4 +1,3 @@
--- Post types and status
 CREATE TYPE post_type AS ENUM ('text', 'link', 'image', 'video');
 
 CREATE TYPE post_status AS ENUM ('active', 'removed', 'deleted', 'spam');
@@ -165,5 +164,73 @@ CREATE INDEX idx_post_reports_post_id ON post_reports (post_id);
 
 CREATE INDEX idx_post_reports_status ON post_reports (status);
 
--- Triggers
-CREATE TRIGGER update_posts_updated_at BEFORE UPDATE ON
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Triggers to automatically update updated_at
+CREATE TRIGGER update_posts_updated_at 
+    BEFORE UPDATE ON posts 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_post_votes_updated_at 
+    BEFORE UPDATE ON post_votes 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Function to update post vote counts
+CREATE OR REPLACE FUNCTION update_post_vote_counts()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Handle INSERT
+    IF TG_OP = 'INSERT' THEN
+        UPDATE posts 
+        SET 
+            upvotes = upvotes + CASE WHEN NEW.vote_type = 1 THEN 1 ELSE 0 END,
+            downvotes = downvotes + CASE WHEN NEW.vote_type = -1 THEN 1 ELSE 0 END,
+            score = score + NEW.vote_type
+        WHERE id = NEW.post_id;
+        RETURN NEW;
+    END IF;
+    
+    -- Handle UPDATE
+    IF TG_OP = 'UPDATE' THEN
+        UPDATE posts 
+        SET 
+            upvotes = upvotes + 
+                CASE WHEN NEW.vote_type = 1 THEN 1 ELSE 0 END - 
+                CASE WHEN OLD.vote_type = 1 THEN 1 ELSE 0 END,
+            downvotes = downvotes + 
+                CASE WHEN NEW.vote_type = -1 THEN 1 ELSE 0 END - 
+                CASE WHEN OLD.vote_type = -1 THEN 1 ELSE 0 END,
+            score = score + NEW.vote_type - OLD.vote_type
+        WHERE id = NEW.post_id;
+        RETURN NEW;
+    END IF;
+    
+    -- Handle DELETE
+    IF TG_OP = 'DELETE' THEN
+        UPDATE posts 
+        SET 
+            upvotes = upvotes - CASE WHEN OLD.vote_type = 1 THEN 1 ELSE 0 END,
+            downvotes = downvotes - CASE WHEN OLD.vote_type = -1 THEN 1 ELSE 0 END,
+            score = score - OLD.vote_type
+        WHERE id = OLD.post_id;
+        RETURN OLD;
+    END IF;
+    
+    RETURN NULL;
+END;
+$$ language 'plpgsql';
+
+-- Trigger to automatically update post vote counts
+CREATE TRIGGER update_post_vote_counts_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON post_votes
+    FOR EACH ROW
+    EXECUTE FUNCTION update_post_vote_counts();

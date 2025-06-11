@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            (SELECT COUNT(*)::int FROM posts WHERE author_id = $1 AND status != 'deleted') as post_count,\n            (SELECT COUNT(*)::int FROM comments WHERE author_id = $1 AND status != 'deleted') as comment_count,\n            (SELECT COUNT(*)::int FROM user_follows WHERE following_id = $1) as follower_count,\n            (SELECT COUNT(*)::int FROM user_follows WHERE follower_id = $1) as following_count\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "post_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "comment_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "follower_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "following_count",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "b4c1149a8061a8388085df1ed3ebf416a316692d50d8a1bda61a672e22c5d46b"
+}

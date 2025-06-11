@@ -431,31 +431,3 @@ VALUES (
         'Platinum award',
         '/icons/platinum.svg'
     );
-
--- Create indexes for performance optimization on large datasets
-CREATE INDEX CONCURRENTLY idx_posts_community_hot_active ON posts (
-    community_id,
-    hot_score DESC,
-    status
-)
-WHERE
-    status = 'active';
-
-CREATE INDEX CONCURRENTLY idx_posts_trending ON posts (created_at DESC, score DESC)
-WHERE
-    created_at > NOW() - INTERVAL '24 hours'
-    AND status = 'active';
-
-CREATE INDEX CONCURRENTLY idx_comments_post_tree ON comments (post_id, path, status)
-WHERE
-    status = 'active';
-
--- Partial indexes for better performance
-CREATE INDEX CONCURRENTLY idx_notifications_unread_recent ON notifications (recipient_id, created_at DESC)
-WHERE
-    is_read = FALSE
-    AND created_at > NOW() - INTERVAL '30 days';
-
-CREATE INDEX CONCURRENTLY idx_typing_indicators_active ON comment_typing_indicators (post_id, parent_comment_id)
-WHERE
-    last_activity_at > NOW() - INTERVAL '30 seconds';
