@@ -15,6 +15,7 @@ pub enum NotificationType {
     CommunityBan,
     PostRemoved,
     CommentRemoved,
+    Follow,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
