@@ -89,7 +89,7 @@ pub async fn send_verification_sms(state: &AppState, user: &User) -> Result<()> 
     Ok(())
 }
 
-pub async fn send_password_reset_email(state: &AppState, user: &User, token: &str) -> Result<()> {
+pub async fn send_password_reset_email(_state: &AppState, user: &User, token: &str) -> Result<()> {
     // TODO: Send actual password reset email
     // For now, just log the token (in production, remove this)
     tracing::info!("Password reset token for {}: {}", user.username, token);

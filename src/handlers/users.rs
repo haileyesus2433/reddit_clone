@@ -1,7 +1,5 @@
 use axum::{
-    Extension,
-    extract::{Path, Query, State},
-    http::StatusCode,
+    extract::{Path, State},
     response::Json,
 };
 use serde::{Deserialize, Serialize};
@@ -13,7 +11,7 @@ use crate::{
     AppState,
     auth::{AuthUser, OptionalAuthUser},
     error::{AppError, Result},
-    models::{User, UserBlock, UserFollow, UserPreferences},
+    models::UserPreferences,
     services::user_service,
 };
 
@@ -242,7 +240,7 @@ pub async fn follow_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<Value>> {
     // Check if user exists
-    let target_user = user_service::get_user_by_id(&state.db, user_id)
+    let _target_user = user_service::get_user_by_id(&state.db, user_id)
         .await?
         .ok_or_else(|| AppError::NotFound("User not found".to_string()))?;
 
@@ -325,7 +323,7 @@ pub async fn block_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<Value>> {
     // Check if user exists
-    let target_user = user_service::get_user_by_id(&state.db, user_id)
+    let _target_user = user_service::get_user_by_id(&state.db, user_id)
         .await?
         .ok_or_else(|| AppError::NotFound("User not found".to_string()))?;
 

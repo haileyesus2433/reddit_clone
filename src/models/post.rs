@@ -24,7 +24,7 @@ pub enum PostStatus {
     Spam,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, sqlx::Decode)]
 pub struct Post {
     pub id: Uuid,
     pub title: String,

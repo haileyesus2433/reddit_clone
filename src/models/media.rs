@@ -41,6 +41,7 @@ pub struct PostMediaResponse {
     pub media_url: String,
     pub thumbnail_url: Option<String>,
     pub media_type: String,
+    pub file_size: Option<i64>,
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub duration: Option<i32>,
@@ -58,6 +59,7 @@ impl From<PostMedia> for PostMediaResponse {
             height: media.height,
             duration: media.duration,
             media_order: media.media_order,
+            file_size: media.file_size,
         }
     }
 }

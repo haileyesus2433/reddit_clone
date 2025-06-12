@@ -1,5 +1,4 @@
 use axum::{
-    Extension,
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,

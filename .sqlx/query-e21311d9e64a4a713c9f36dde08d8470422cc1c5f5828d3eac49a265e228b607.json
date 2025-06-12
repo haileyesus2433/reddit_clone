@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            (SELECT COUNT(*) FROM community_memberships WHERE community_id = $1) as member_count,\n            (SELECT COUNT(*) FROM posts WHERE community_id = $1 AND status != 'deleted') as post_count,\n            (SELECT COUNT(*) FROM comments c \n             JOIN posts p ON c.post_id = p.id \n             WHERE p.community_id = $1 AND c.status != 'deleted') as comment_count,\n            (SELECT COUNT(*) FROM community_memberships \n             WHERE community_id = $1 AND role IN ('owner', 'admin', 'moderator')) as moderator_count\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "member_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "post_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "comment_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "moderator_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "e21311d9e64a4a713c9f36dde08d8470422cc1c5f5828d3eac49a265e228b607"
+}

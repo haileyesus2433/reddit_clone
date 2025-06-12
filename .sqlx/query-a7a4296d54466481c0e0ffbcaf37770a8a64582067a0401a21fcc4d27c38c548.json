@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id, c.name, c.display_name, c.description, c.icon_url, \n               c.subscriber_count, c.is_nsfw, cm.role as \"role: MembershipRole\"\n        FROM communities c\n        JOIN community_memberships cm ON c.id = cm.community_id\n        WHERE cm.user_id = $1 AND c.status = 'active'\n        AND cm.role IN ('owner', 'admin', 'moderator')\n        ORDER BY cm.joined_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "icon_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "subscriber_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_nsfw",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "role: MembershipRole",
+        "type_info": {
+          "Custom": {
+            "name": "membership_role",
+            "kind": {
+              "Enum": [
+                "member",
+                "moderator",
+                "admin",
+                "owner"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "a7a4296d54466481c0e0ffbcaf37770a8a64582067a0401a21fcc4d27c38c548"
+}

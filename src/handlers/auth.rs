@@ -1,4 +1,4 @@
-use axum::{Extension, extract::State, http::StatusCode, response::Json};
+use axum::{extract::State, http::StatusCode, response::Json};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -10,10 +10,7 @@ use crate::{
     AppState,
     auth::{AuthUser, Claims, get_google_user_info, hash_password, verify_password},
     error::{AppError, Result},
-    models::{
-        AuthProvider, CreateUserRequest, PasswordResetToken, PhoneVerificationCode, User,
-        UserStatus,
-    },
+    models::{AuthProvider, PasswordResetToken, PhoneVerificationCode, User, UserStatus},
     services::auth_service,
 };
 
@@ -475,8 +472,8 @@ pub async fn google_oauth(
 }
 
 pub async fn apple_oauth(
-    State(state): State<AppState>,
-    Json(payload): Json<AppleOAuthRequest>,
+    State(_state): State<AppState>,
+    Json(_payload): Json<AppleOAuthRequest>,
 ) -> Result<(StatusCode, Json<Value>)> {
     // TODO: Implement Apple OAuth verification
     // This would involve verifying the Apple ID token

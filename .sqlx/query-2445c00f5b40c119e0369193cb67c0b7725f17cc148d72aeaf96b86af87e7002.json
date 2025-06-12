@@ -1,0 +1,67 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id, c.name, c.display_name, c.description, c.icon_url, \n               c.subscriber_count, c.is_nsfw,\n               CASE WHEN cm.user_id IS NOT NULL THEN true ELSE false END as is_member\n        FROM communities c\n        LEFT JOIN community_memberships cm ON c.id = cm.community_id AND cm.user_id = $1\n        WHERE c.status = 'active'\n        AND (c.name ILIKE $2 OR c.display_name ILIKE $2 OR c.description ILIKE $2)\n        ORDER BY \n            CASE \n                WHEN c.name ILIKE $2 THEN 1\n                WHEN c.display_name ILIKE $2 THEN 2\n                ELSE 3\n            END,\n            c.subscriber_count DESC\n        LIMIT $3 OFFSET $4\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "icon_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "subscriber_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_nsfw",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "is_member",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "2445c00f5b40c119e0369193cb67c0b7725f17cc148d72aeaf96b86af87e7002"
+}

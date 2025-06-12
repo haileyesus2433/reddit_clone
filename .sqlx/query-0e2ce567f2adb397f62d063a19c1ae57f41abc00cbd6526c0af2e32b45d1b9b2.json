@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(*) as count \n        FROM saved_posts sp\n        JOIN posts p ON sp.post_id = p.id\n        WHERE sp.user_id = $1 AND p.status = 'active'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0e2ce567f2adb397f62d063a19c1ae57f41abc00cbd6526c0af2e32b45d1b9b2"
+}

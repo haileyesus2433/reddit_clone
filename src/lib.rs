@@ -154,7 +154,22 @@ pub fn create_app(state: AppState) -> Router {
         .route(
             "/api/communities/:name/flairs",
             post(handlers::communities::create_community_flair),
-        );
+        )
+        // Post routes
+        .route("/api/posts", post(handlers::posts::create_post))
+        .route("/api/posts/:post_id", put(handlers::posts::update_post))
+        .route("/api/posts/:post_id", delete(handlers::posts::delete_post))
+        .route("/api/posts/:post_id/vote", post(handlers::posts::vote_post))
+        .route("/api/posts/:post_id/save", post(handlers::posts::save_post))
+        .route(
+            "/api/posts/:post_id/save",
+            delete(handlers::posts::unsave_post),
+        )
+        .route(
+            "/api/posts/:post_id/report",
+            post(handlers::posts::report_post),
+        )
+        .route("/api/users/me/saved", get(handlers::posts::get_saved_posts));
 
     Router::new()
         .merge(public_routes)

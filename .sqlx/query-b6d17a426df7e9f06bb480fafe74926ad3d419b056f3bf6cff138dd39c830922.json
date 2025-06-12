@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE posts \n        SET hot_score = CASE \n            WHEN score > 0 THEN \n                LOG(GREATEST(ABS(score), 1)) + (EXTRACT(EPOCH FROM (NOW() - created_at)) / 45000.0)\n            ELSE \n                -LOG(GREATEST(ABS(score), 1)) + (EXTRACT(EPOCH FROM (NOW() - created_at)) / 45000.0)\n        END\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b6d17a426df7e9f06bb480fafe74926ad3d419b056f3bf6cff138dd39c830922"
+}

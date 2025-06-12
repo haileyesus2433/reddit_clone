@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT cf.id, cf.text, cf.background_color, cf.text_color\n        FROM post_flairs pf\n        JOIN community_flairs cf ON pf.flair_id = cf.id\n        WHERE pf.post_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "text",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "background_color",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "text_color",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "160db76c1f15c4aa2f92a60b7482e1a70ee918df62ae305cff59e04533eeee9f"
+}
