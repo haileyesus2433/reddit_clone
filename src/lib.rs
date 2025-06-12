@@ -83,23 +83,23 @@ pub fn create_app(state: AppState) -> Router {
             put(handlers::users::update_user_preferences),
         )
         .route(
-            "/api/users/me/follow/:user_id",
+            "/api/users/me/follow/{user_id}",
             post(handlers::users::follow_user),
         )
         .route(
-            "/api/users/me/unfollow/:user_id",
+            "/api/users/me/unfollow/{user_id}",
             delete(handlers::users::unfollow_user),
         )
         .route(
-            "/api/users/me/block/:user_id",
+            "/api/users/me/block/{user_id}",
             post(handlers::users::block_user),
         )
         .route(
-            "/api/users/me/unblock/:user_id",
+            "/api/users/me/unblock/{user_id}",
             delete(handlers::users::unblock_user),
         )
         .route(
-            "/api/users/:username",
+            "/api/users/{username}",
             get(handlers::users::get_user_by_username),
         )
         // Community routes
@@ -112,61 +112,67 @@ pub fn create_app(state: AppState) -> Router {
             post(handlers::communities::create_community),
         )
         .route(
-            "/api/communities/:name",
+            "/api/communities/{name}",
             get(handlers::communities::get_community),
         )
         .route(
-            "/api/communities/:name",
+            "/api/communities/{name}",
             put(handlers::communities::update_community),
         )
         .route(
-            "/api/communities/:name/join",
+            "/api/communities/{name}/join",
             post(handlers::communities::join_community),
         )
         .route(
-            "/api/communities/:name/leave",
+            "/api/communities/{name}/leave",
             post(handlers::communities::leave_community),
         )
         .route(
-            "/api/communities/:name/members",
+            "/api/communities/{name}/members",
             get(handlers::communities::get_community_members),
         )
         .route(
-            "/api/communities/:name/members/:member_id/role",
+            "/api/communities/{name}/members/{member_id}/role",
             put(handlers::communities::update_member_role),
         )
         .route(
-            "/api/communities/:name/members/:member_id",
+            "/api/communities/{name}/members/{member_id}",
             delete(handlers::communities::remove_member),
         )
         .route(
-            "/api/communities/:name/rules",
+            "/api/communities/{name}/rules",
             get(handlers::communities::get_community_rules),
         )
         .route(
-            "/api/communities/:name/rules",
+            "/api/communities/{name}/rules",
             post(handlers::communities::create_community_rule),
         )
         .route(
-            "/api/communities/:name/flairs",
+            "/api/communities/{name}/flairs",
             get(handlers::communities::get_community_flairs),
         )
         .route(
-            "/api/communities/:name/flairs",
+            "/api/communities/{name}/flairs",
             post(handlers::communities::create_community_flair),
         )
         // Post routes
         .route("/api/posts", post(handlers::posts::create_post))
-        .route("/api/posts/:post_id", put(handlers::posts::update_post))
-        .route("/api/posts/:post_id", delete(handlers::posts::delete_post))
-        .route("/api/posts/:post_id/vote", post(handlers::posts::vote_post))
-        .route("/api/posts/:post_id/save", post(handlers::posts::save_post))
+        .route("/api/posts/{post_id}", put(handlers::posts::update_post))
+        .route("/api/posts/{post_id}", delete(handlers::posts::delete_post))
         .route(
-            "/api/posts/:post_id/save",
+            "/api/posts/{post_id}/vote",
+            post(handlers::posts::vote_post),
+        )
+        .route(
+            "/api/posts/{post_id}/save",
+            post(handlers::posts::save_post),
+        )
+        .route(
+            "/api/posts/{post_id}/save",
             delete(handlers::posts::unsave_post),
         )
         .route(
-            "/api/posts/:post_id/report",
+            "/api/posts/{post_id}/report",
             post(handlers::posts::report_post),
         )
         .route("/api/users/me/saved", get(handlers::posts::get_saved_posts));
