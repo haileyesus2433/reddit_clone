@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO saved_comments (id, user_id, comment_id, created_at)\n        VALUES ($1, $2, $3, NOW())\n        ON CONFLICT (user_id, comment_id) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2b908aeeb2c5ff238292140b057da8c5ef5cc91b9a32fb345d4bae7e980d6d79"
+}

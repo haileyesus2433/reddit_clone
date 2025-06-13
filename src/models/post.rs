@@ -15,7 +15,7 @@ pub enum PostType {
     Video,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, PartialEq, Eq)]
 #[sqlx(type_name = "post_status", rename_all = "lowercase")]
 pub enum PostStatus {
     Active,

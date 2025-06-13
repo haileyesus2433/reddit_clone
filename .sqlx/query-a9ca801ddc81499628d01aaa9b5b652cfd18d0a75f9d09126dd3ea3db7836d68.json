@@ -1,0 +1,155 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            c.id, c.content, c.post_id, c.author_id, c.parent_comment_id, \n            c.status as \"status: CommentStatus\", c.is_edited, c.upvotes, c.downvotes, \n            c.score, c.reply_count, c.depth, c.created_at, c.updated_at, c.edited_at,\n            u.username, u.display_name as user_display_name, u.avatar_url, u.is_verified,\n            CASE WHEN cv.vote_type IS NOT NULL THEN cv.vote_type ELSE NULL END as user_vote,\n            CASE WHEN sc.id IS NOT NULL THEN true ELSE false END as is_saved\n        FROM comments c\n        JOIN users u ON c.author_id = u.id\n        LEFT JOIN comment_votes cv ON c.id = cv.comment_id AND cv.user_id = $2\n        LEFT JOIN saved_comments sc ON c.id = sc.comment_id AND sc.user_id = $2\n        WHERE c.id = $1 AND c.status != 'deleted'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "post_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "author_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_comment_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "status: CommentStatus",
+        "type_info": {
+          "Custom": {
+            "name": "comment_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "removed",
+                "deleted",
+                "spam"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_edited",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "upvotes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "downvotes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "score",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "reply_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "depth",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "edited_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 16,
+        "name": "user_display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 17,
+        "name": "avatar_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 18,
+        "name": "is_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 19,
+        "name": "user_vote",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 20,
+        "name": "is_saved",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "a9ca801ddc81499628d01aaa9b5b652cfd18d0a75f9d09126dd3ea3db7836d68"
+}

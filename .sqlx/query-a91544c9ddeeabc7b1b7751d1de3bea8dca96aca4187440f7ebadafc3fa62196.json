@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM saved_comments WHERE user_id = $1 AND comment_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a91544c9ddeeabc7b1b7751d1de3bea8dca96aca4187440f7ebadafc3fa62196"
+}

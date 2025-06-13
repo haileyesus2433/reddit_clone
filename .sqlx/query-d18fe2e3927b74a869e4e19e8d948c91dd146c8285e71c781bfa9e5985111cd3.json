@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT upvotes, downvotes, score,\n               CASE WHEN cv.vote_type IS NOT NULL THEN cv.vote_type ELSE NULL END as user_vote\n        FROM comments c\n        LEFT JOIN comment_votes cv ON c.id = cv.comment_id AND cv.user_id = $1\n        WHERE c.id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "upvotes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "downvotes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "score",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_vote",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "d18fe2e3927b74a869e4e19e8d948c91dd146c8285e71c781bfa9e5985111cd3"
+}

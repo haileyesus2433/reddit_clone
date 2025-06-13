@@ -175,7 +175,37 @@ pub fn create_app(state: AppState) -> Router {
             "/api/posts/{post_id}/report",
             post(handlers::posts::report_post),
         )
-        .route("/api/users/me/saved", get(handlers::posts::get_saved_posts));
+        .route("/api/users/me/saved", get(handlers::posts::get_saved_posts))
+        // Comment routes
+        .route("/api/comments", post(handlers::comments::create_comment))
+        .route(
+            "/api/comments/{comment_id}",
+            put(handlers::comments::update_comment),
+        )
+        .route(
+            "/api/comments/{comment_id}",
+            delete(handlers::comments::delete_comment),
+        )
+        .route(
+            "/api/comments/{comment_id}/vote",
+            post(handlers::comments::vote_comment),
+        )
+        .route(
+            "/api/comments/{comment_id}/save",
+            post(handlers::comments::save_comment),
+        )
+        .route(
+            "/api/comments/{comment_id}/save",
+            delete(handlers::comments::unsave_comment),
+        )
+        .route(
+            "/api/comments/{comment_id}/report",
+            post(handlers::comments::report_comment),
+        )
+        .route(
+            "/api/users/me/comments/saved",
+            get(handlers::comments::get_saved_comments),
+        );
 
     Router::new()
         .merge(public_routes)

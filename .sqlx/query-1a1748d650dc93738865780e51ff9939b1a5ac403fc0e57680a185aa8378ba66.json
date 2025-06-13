@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO comment_votes (id, user_id, comment_id, vote_type, created_at, updated_at)\n            VALUES ($1, $2, $3, $4, NOW(), NOW())\n            ON CONFLICT (user_id, comment_id)\n            DO UPDATE SET vote_type = $4, updated_at = NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a1748d650dc93738865780e51ff9939b1a5ac403fc0e57680a185aa8378ba66"
+}
