@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT u.username, u.display_name, COUNT(*) as post_count\n        FROM posts p\n        JOIN users u ON p.author_id = u.id\n        WHERE p.status = 'active' \n        AND to_tsquery('english', $1) @@ to_tsvector('english', p.title || ' ' || COALESCE(p.content, ''))\n        GROUP BY u.id, u.username, u.display_name\n        ORDER BY post_count DESC\n        LIMIT 10\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "post_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "16e96f03c659f79d67ce9aaf09b061220778f34098422505bbd1ba77936b5cad"
+}

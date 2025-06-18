@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH topic_mentions AS (\n            SELECT \n                words.word as topic,\n                p.created_at,\n                c.name as community_name\n            FROM posts p\n            JOIN communities c ON p.community_id = c.id\n            CROSS JOIN LATERAL unnest(\n                string_to_array(\n                    lower(regexp_replace(p.title || ' ' || COALESCE(p.content, ''), '[^a-zA-Z0-9\\s]', ' ', 'g')), \n                    ' '\n                )\n            ) AS words(word)\n            WHERE p.status = 'active'\n            AND p.created_at > NOW() - INTERVAL '24 hours'\n            AND length(words.word) > 3\n        ),\n        topic_stats AS (\n            SELECT \n                topic,\n                COUNT(*) as mention_count,\n                COUNT(CASE WHEN created_at > NOW() - INTERVAL '12 hours' THEN 1 END) as recent_mentions,\n                COUNT(CASE WHEN created_at BETWEEN NOW() - INTERVAL '24 hours' AND NOW() - INTERVAL '12 hours' THEN 1 END) as older_mentions,\n                array_agg(DISTINCT community_name) as communities\n            FROM topic_mentions\n            WHERE topic NOT IN ('the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 'man', 'men', 'put', 'say', 'she', 'too', 'use')\n            GROUP BY topic\n            HAVING COUNT(*) >= 5\n        )\n        SELECT \n            topic,\n            mention_count,\n            CASE \n                WHEN older_mentions = 0 THEN 100.0\n                ELSE (recent_mentions * 100.0 / older_mentions)\n            END as growth_rate,\n            communities\n        FROM topic_stats\n        ORDER BY growth_rate DESC, mention_count DESC\n        LIMIT 10\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "topic",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "mention_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "growth_rate",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "communities",
+        "type_info": "VarcharArray"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "69306218d0f6ef8487166771c20729e81f474b678b0360121b3f188e3d2a922c"
+}

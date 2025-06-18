@@ -205,6 +205,22 @@ pub fn create_app(state: AppState) -> Router {
         .route(
             "/api/users/me/comments/saved",
             get(handlers::comments::get_saved_comments),
+        )
+        // Search routes
+        .route("/api/search", get(handlers::search::search))
+        .route("/api/search/trending", get(handlers::search::trending))
+        .route(
+            "/api/search/autocomplete",
+            get(handlers::search::autocomplete),
+        )
+        .route("/api/search/history", get(handlers::search::search_history))
+        .route(
+            "/api/search/history",
+            delete(handlers::search::clear_search_history),
+        )
+        .route(
+            "/api/search/track-click",
+            post(handlers::search::track_search_click),
         );
 
     Router::new()

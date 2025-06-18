@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT query, COUNT(*) as search_count\n        FROM search_history\n        WHERE query ILIKE $1\n        GROUP BY query\n        ORDER BY search_count DESC\n        LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "query",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "search_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "1f7e1ca17d208de2f2b194e4b3aba21e1f14ad025ed9f8e888c6cc4c9196c520"
+}

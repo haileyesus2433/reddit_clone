@@ -1,0 +1,104 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH post_stats AS (\n            SELECT \n                p.id,\n                p.title,\n                p.score,\n                p.comment_count,\n                p.created_at,\n                u.id as author_id,\n                u.username,\n                u.display_name as author_display_name,\n                u.avatar_url as author_avatar,\n                u.is_verified,\n                c.id as community_id,\n                c.name as community_name,\n                c.display_name as community_display_name,\n                c.icon_url as community_icon,\n                -- Calculate growth rate based on votes in last hour vs previous hour\n                COALESCE(\n                    (SELECT COUNT(*) FROM post_votes pv \n                     WHERE pv.post_id = p.id \n                     AND pv.created_at > NOW() - INTERVAL '1 hour') * 100.0 / \n                    NULLIF((SELECT COUNT(*) FROM post_votes pv2 \n                            WHERE pv2.post_id = p.id \n                            AND pv2.created_at BETWEEN NOW() - INTERVAL '2 hours' \n                            AND NOW() - INTERVAL '1 hour'), 0),\n                    0\n                ) as growth_rate\n            FROM posts p\n            JOIN users u ON p.author_id = u.id\n            JOIN communities c ON p.community_id = c.id\n            WHERE p.status = 'active'\n            AND p.created_at > NOW() - INTERVAL '24 hours'\n        )\n        SELECT *\n        FROM post_stats\n        WHERE growth_rate > 50 -- At least 50% growth\n        ORDER BY growth_rate DESC, score DESC\n        LIMIT 20\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "score",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "author_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "author_display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "author_avatar",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "community_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "community_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "community_display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "community_icon",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "growth_rate",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "0fe3ab4c0aeb534018354bb12a627ea09a82aa66e28ae979dbb525debb30c075"
+}

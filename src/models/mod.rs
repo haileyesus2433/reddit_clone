@@ -3,6 +3,7 @@ pub mod community;
 pub mod media;
 pub mod notification;
 pub mod post;
+pub mod search;
 pub mod user;
 pub mod vote;
 
@@ -11,5 +12,6 @@ pub use community::*;
 pub use media::*;
 pub use notification::*;
 pub use post::*;
+pub use search::*;
 pub use user::*;
 pub use vote::*;

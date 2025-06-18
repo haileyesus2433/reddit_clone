@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH rising_posts AS (\n            SELECT \n                p.id,\n                p.title,\n                p.score,\n                p.comment_count,\n                p.created_at,\n                u.id as author_id,\n                u.username,\n                u.display_name as author_display_name,\n                u.avatar_url as author_avatar,\n                u.is_verified,\n                c.id as community_id,\n                c.name as community_name,\n                c.display_name as community_display_name,\n                c.icon_url as community_icon,\n                -- Rising score: recent activity with good engagement\n                (p.score * 0.7 + p.comment_count * 0.3) / \n                EXTRACT(EPOCH FROM (NOW() - p.created_at)) * 3600 as rising_score\n            FROM posts p\n            JOIN users u ON p.author_id = u.id\n            JOIN communities c ON p.community_id = c.id\n            WHERE p.status = 'active'\n            AND p.created_at > NOW() - INTERVAL '6 hours'\n            AND p.score > 0\n        )\n        SELECT *, rising_score as growth_rate\n        FROM rising_posts\n        ORDER BY rising_score DESC\n        LIMIT 20\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "score",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "author_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "author_display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "author_avatar",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "community_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "community_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "community_display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "community_icon",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "rising_score",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "growth_rate",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "805f3e13b4da796dec97bcc3ea2e207422e4467bfd941e83ff9b97f025f29ad6"
+}

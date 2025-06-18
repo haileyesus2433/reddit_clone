@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE search_history \n        SET clicked_result_id = $1, clicked_result_type = $2\n        WHERE id = $3 AND user_id = $4\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "da748944baf49ea44ec729dcf8198e5d18ce59bac4c15382b03325b30b7ffd32"
+}
