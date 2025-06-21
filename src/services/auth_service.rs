@@ -3,6 +3,13 @@ use crate::{
     error::{AppError, Result},
     models::User,
 };
+use oauth2::{
+    AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
+    PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl, reqwest,
+};
+use oauth2::{basic::BasicClient, url};
+use std::error::Error;
+
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -101,4 +108,77 @@ fn generate_verification_code() -> String {
     use rand::Rng;
     let mut rng = rand::rng();
     format!("{:06}", rng.random_range(100000..999999))
+}
+
+type GoogleOAuthClient = oauth2::Client<
+    oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>,
+    oauth2::StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>,
+    oauth2::StandardTokenIntrospectionResponse<
+        oauth2::EmptyExtraTokenFields,
+        oauth2::basic::BasicTokenType,
+    >,
+    oauth2::StandardRevocableToken,
+    oauth2::StandardErrorResponse<oauth2::RevocationErrorResponseType>,
+    oauth2::EndpointSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointSet,
+>;
+
+pub struct GoogleOAuthService {
+    client: GoogleOAuthClient,
+    http_client: reqwest::Client,
+}
+
+impl GoogleOAuthService {
+    pub fn new(
+        client_id: &str,
+        client_secret: &str,
+        redirect_uri: &str,
+    ) -> std::result::Result<Self, Box<dyn Error>> {
+        let http_client = reqwest::ClientBuilder::new()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()?;
+
+        let client = BasicClient::new(ClientId::new(client_id.to_string()))
+            .set_client_secret(ClientSecret::new(client_secret.to_string()))
+            .set_auth_uri(AuthUrl::new(
+                "https://accounts.google.com/o/oauth2/v2/auth".to_string(),
+            )?)
+            .set_token_uri(TokenUrl::new(
+                "https://www.googleapis.com/oauth2/v4/token".to_string(),
+            )?)
+            .set_redirect_uri(RedirectUrl::new(redirect_uri.to_string())?);
+
+        Ok(Self {
+            client,
+            http_client,
+        })
+    }
+
+    pub fn get_authorization_url(&self) -> (url::Url, CsrfToken) {
+        self.client
+            .authorize_url(CsrfToken::new_random)
+            .add_scope(Scope::new(
+                "https://www.googleapis.com/auth/userinfo.email".to_string(),
+            ))
+            .add_scope(Scope::new(
+                "https://www.googleapis.com/auth/userinfo.profile".to_string(),
+            ))
+            .url()
+    }
+
+    pub async fn exchange_code_for_token(
+        &self,
+        code: &str,
+    ) -> std::result::Result<AccessToken, Box<dyn Error>> {
+        let token_result = self
+            .client
+            .exchange_code(AuthorizationCode::new(code.to_string()))
+            .request_async(&self.http_client)
+            .await?;
+
+        Ok(token_result.access_token().clone())
+    }
 }
