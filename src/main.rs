@@ -3,6 +3,8 @@ use reddit_clone::database::create_pool;
 use reddit_clone::redis::RedisClient;
 use reddit_clone::services::apple_service::AppleOAuthService;
 use reddit_clone::services::auth_service::GoogleOAuthService;
+use reddit_clone::services::email_service::EmailService;
+use reddit_clone::services::sms_service::SmsService;
 use reddit_clone::{AppState, create_app};
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -40,8 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create Google oauth service
     let google_service = Arc::new(GoogleOAuthService::new(
-        &config.google_client_id.clone().unwrap_or_default(),
-        &config.google_client_secret.clone().unwrap_or_default(),
+        &config.google_client_id.clone(),
+        &config.google_client_secret.clone(),
         &format!(
             "http://{}:{}/api/auth/oauth/google/callback",
             config.host, config.port
@@ -50,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create Apple oauth service
     let apple_service = Arc::new(AppleOAuthService::new(
-        &config.apple_client_id.clone().unwrap_or_default(),
+        &config.apple_client_id.clone(),
         &config.apple_team_id.clone().unwrap_or_default(),
         &config.apple_key_id.clone().unwrap_or_default(),
         &config.apple_private_key.clone().unwrap_or_default(),
@@ -67,6 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         google_service,
         apple_service,
         config: Arc::new(config.clone()),
+        email_service: Arc::new(EmailService::new(&config)),
+        sms_service: Arc::new(SmsService::new(&config)),
     };
 
     // Create application

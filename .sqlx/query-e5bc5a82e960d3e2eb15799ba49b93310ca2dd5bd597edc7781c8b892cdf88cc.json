@@ -21,7 +21,20 @@
       {
         "ordinal": 3,
         "name": "search_type: crate::models::SearchType",
-        "type_info": "Varchar"
+        "type_info": {
+          "Custom": {
+            "name": "search_type",
+            "kind": {
+              "Enum": [
+                "all",
+                "posts",
+                "comments",
+                "communities",
+                "users"
+              ]
+            }
+          }
+        }
       },
       {
         "ordinal": 4,

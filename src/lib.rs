@@ -25,7 +25,10 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use crate::{
     config::Config,
     redis::RedisClient,
-    services::{apple_service::AppleOAuthService, auth_service::GoogleOAuthService},
+    services::{
+        apple_service::AppleOAuthService, auth_service::GoogleOAuthService,
+        email_service::EmailService, sms_service::SmsService,
+    },
 };
 
 #[derive(Clone)]
@@ -35,6 +38,8 @@ pub struct AppState {
     pub apple_service: Arc<AppleOAuthService>,
     pub redis: Arc<RedisClient>,
     pub config: Arc<Config>,
+    pub email_service: Arc<EmailService>,
+    pub sms_service: Arc<SmsService>,
 }
 
 pub fn create_app(state: AppState) -> Router {
@@ -87,7 +92,7 @@ pub fn create_app(state: AppState) -> Router {
             post(handlers::auth::apple_oauth),
         );
 
-    // Protected routes (auth required) - no middleware needed
+    // Protected routes
     let protected_routes = Router::new()
         .route("/api/auth/logout", post(handlers::auth::logout))
         .route("/api/auth/refresh", post(handlers::auth::refresh_token))

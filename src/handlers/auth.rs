@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use tokio::join;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -131,46 +132,60 @@ pub async fn register(
         return Err(AppError::RateLimit);
     }
 
-    // Check if username already exists
-    let existing_user = sqlx::query_as::<_, User>(
+    // Parallelize the independent existence checks
+    let username_check = sqlx::query_as::<_, User>(
         "SELECT * FROM users WHERE username = $1 AND status != 'deleted'",
     )
     .bind(&payload.username)
-    .fetch_optional(&state.db)
-    .await?;
+    .fetch_optional(&state.db);
 
+    let email_check = async {
+        if let Some(ref email) = payload.email {
+            sqlx::query_as::<_, User>(
+                "SELECT * FROM users WHERE email = $1 AND status != 'deleted'",
+            )
+            .bind(email)
+            .fetch_optional(&state.db)
+            .await
+        } else {
+            Ok(None)
+        }
+    };
+
+    let phone_check = async {
+        if let Some(ref phone) = payload.phone {
+            sqlx::query_as::<_, User>(
+                "SELECT * FROM users WHERE phone = $1 AND status != 'deleted'",
+            )
+            .bind(phone)
+            .fetch_optional(&state.db)
+            .await
+        } else {
+            Ok(None)
+        }
+    };
+
+    // Execute all checks in parallel
+    let (existing_user_res, existing_email_res, existing_phone_res) =
+        join!(username_check, email_check, phone_check);
+
+    let existing_user = existing_user_res?;
+    let existing_email = existing_email_res?;
+    let existing_phone = existing_phone_res?;
+
+    // Check results
     if existing_user.is_some() {
         return Err(AppError::Conflict("Username already exists".to_string()));
     }
 
-    // Check if email already exists (if provided)
-    if let Some(ref email) = payload.email {
-        let existing_email = sqlx::query_as::<_, User>(
-            "SELECT * FROM users WHERE email = $1 AND status != 'deleted'",
-        )
-        .bind(email)
-        .fetch_optional(&state.db)
-        .await?;
-
-        if existing_email.is_some() {
-            return Err(AppError::Conflict("Email already exists".to_string()));
-        }
+    if existing_email.is_some() {
+        return Err(AppError::Conflict("Email already exists".to_string()));
     }
 
-    // Check if phone already exists (if provided)
-    if let Some(ref phone) = payload.phone {
-        let existing_phone = sqlx::query_as::<_, User>(
-            "SELECT * FROM users WHERE phone = $1 AND status != 'deleted'",
-        )
-        .bind(phone)
-        .fetch_optional(&state.db)
-        .await?;
-
-        if existing_phone.is_some() {
-            return Err(AppError::Conflict(
-                "Phone number already exists".to_string(),
-            ));
-        }
+    if existing_phone.is_some() {
+        return Err(AppError::Conflict(
+            "Phone number already exists".to_string(),
+        ));
     }
 
     // Hash password
@@ -231,17 +246,101 @@ pub async fn register(
         .store_session(&claims.jti, &user.id.to_string(), 86400)
         .await?;
 
-    // Send verification email if email provided
-    if payload.email.is_some() {
-        // TODO: Implement email verification
-        // auth_service::send_verification_email(&state, &user).await?;
-    }
+    // Send verification email and SMS in parallel if provided
+    let email_task = async {
+        if let Some(ref email) = payload.email {
+            tracing::info!("Sending email to {}", email);
+            // Generate email verification token
+            let verification_token = Uuid::new_v4().to_string();
+            let expires_at = chrono::Utc::now() + chrono::Duration::hours(24);
 
-    // Send verification SMS if phone provided
-    if payload.phone.is_some() {
-        // TODO: Implement phone verification
-        // auth_service::send_verification_sms(&state, &user).await?;
+            // Store verification token in database
+            sqlx::query(
+                r#"
+                INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at)
+                VALUES ($1, $2, $3, $4, $5)
+                "#,
+            )
+            .bind(Uuid::new_v4())
+            .bind(user_id)
+            .bind(&verification_token)
+            .bind(expires_at)
+            .bind(now)
+            .execute(&state.db)
+            .await?;
+
+            // Send verification email
+            state
+                .email_service
+                .send_verification_email(
+                    email,
+                    &user.username,
+                    &verification_token,
+                    &state.config.base_url,
+                )
+                .await
+                .map_err(|e| {
+                    tracing::error!("Sending email failed {}", e);
+                    e
+                })
+        } else {
+            Ok(())
+        }
+    };
+
+    let sms_task = async {
+        if let Some(ref phone) = payload.phone {
+            tracing::info!("Sending SMS to {}", phone);
+            // Generate phone verification code
+            let verification_code = format!("{:06}", rand::random::<u32>() % 1000000);
+            let expires_at = chrono::Utc::now() + chrono::Duration::minutes(10);
+
+            // Store verification code in database
+            sqlx::query(
+                r#"
+                INSERT INTO phone_verification_codes (id, phone, code, expires_at, created_at)
+                VALUES ($1, $2, $3, $4, $5)
+                "#,
+            )
+            .bind(Uuid::new_v4())
+            .bind(phone)
+            .bind(&verification_code)
+            .bind(expires_at)
+            .bind(now)
+            .execute(&state.db)
+            .await?;
+
+            // Send verification SMS
+            state
+                .sms_service
+                .send_verification_code(phone, &verification_code, "Reddit Clone")
+                .await
+                .map(|message| {
+                    tracing::info!("Sms sent successfully {} ", message);
+                    ()
+                }) // Convert String result to ()
+                .map_err(|e| {
+                    tracing::error!("Failed to send sms {}", e);
+                    e
+                })
+        } else {
+            Ok(())
+        }
+    };
+
+    // Execute email and SMS tasks in parallel
+    let (email_result, sms_result) = join!(email_task, sms_task);
+
+    if let Err(e) = &email_result {
+        tracing::error!("Failed to send  email: {}", e);
     }
+    if let Err(e) = &sms_result {
+        tracing::error!("Failed to send  SMS: {}", e);
+    }
+    if email_result.is_ok() && sms_result.is_ok() {
+        tracing::info!("Email and SMS verification sent successfully");
+    }
+    // Don't fail the registration, just log the error
 
     Ok((
         StatusCode::CREATED,
@@ -252,7 +351,6 @@ pub async fn register(
         })),
     ))
 }
-
 pub async fn login(
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,

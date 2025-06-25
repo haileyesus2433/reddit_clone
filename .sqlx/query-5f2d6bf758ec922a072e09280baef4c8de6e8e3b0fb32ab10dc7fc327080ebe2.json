@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    INSERT INTO search_history (user_id, query, search_type, results_count)\n    VALUES ($1, $2, $3, $4)\n    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "search_type",
+            "kind": {
+              "Enum": [
+                "all",
+                "posts",
+                "comments",
+                "communities",
+                "users"
+              ]
+            }
+          }
+        },
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5f2d6bf758ec922a072e09280baef4c8de6e8e3b0fb32ab10dc7fc327080ebe2"
+}

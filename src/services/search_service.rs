@@ -126,7 +126,7 @@ async fn search_posts(
 ) -> Result<Vec<SearchPostResult>> {
     let sort_clause = match query.sort.as_ref().unwrap_or(&SearchSort::Relevance) {
         SearchSort::Relevance => {
-            "ts_rank(search_vector, to_tsquery('english', $1)) DESC, p.score DESC"
+            "ts_rank(p.search_vector, to_tsquery('english', $1)) DESC, p.score DESC"
         }
         SearchSort::New => "p.created_at DESC",
         SearchSort::Top => "p.score DESC, p.created_at DESC",
@@ -135,7 +135,7 @@ async fn search_posts(
 
     let mut where_conditions = vec![
         "p.status = 'active'".to_string(),
-        "to_tsquery('english', $1) @@ search_vector".to_string(),
+        "to_tsquery('english', $1) @@ p.search_vector".to_string(),
     ];
 
     if !time_filter.is_empty() {
@@ -169,7 +169,7 @@ async fn search_posts(
             u.avatar_url as author_avatar, u.is_verified,
             c.id as community_id, c.name as community_name, c.display_name as community_display_name,
             c.icon_url as community_icon,
-            ts_rank(search_vector, to_tsquery('english', $1)) as relevance_score,
+            ts_rank(p.search_vector, to_tsquery('english', $1)) as relevance_score,
             ts_headline('english', COALESCE(p.content, p.title), to_tsquery('english', $1)) as highlight,
             pm.thumbnail_url
         FROM posts p
@@ -219,7 +219,7 @@ async fn search_posts(
             },
             is_nsfw: row.get("is_nsfw"),
             thumbnail_url: row.get("thumbnail_url"),
-            relevance_score: row.get::<f64, _>("relevance_score") as f32,
+            relevance_score: row.get::<f32, _>("relevance_score"),
             highlight: row.get("highlight"),
         };
         posts.push(post);
@@ -318,7 +318,7 @@ async fn search_comments(
                     icon_url: row.get("community_icon"),
                 },
             },
-            relevance_score: row.get::<f64, _>("relevance_score") as f32,
+            relevance_score: row.get::<f32, _>("relevance_score"),
             highlight: row.get("highlight"),
         };
         comments.push(comment);
@@ -336,7 +336,7 @@ async fn search_communities(
 ) -> Result<Vec<SearchCommunityResult>> {
     let sort_clause = match query.sort.as_ref().unwrap_or(&SearchSort::Relevance) {
         SearchSort::Relevance => {
-            "ts_rank(search_vector, to_tsquery('english', $1)) DESC, c.subscriber_count DESC"
+            "ts_rank(c.search_vector, to_tsquery('english', $1)) DESC, c.subscriber_count DESC"
         }
         SearchSort::New => "c.created_at DESC",
         SearchSort::Top => "c.subscriber_count DESC, c.created_at DESC",
@@ -348,11 +348,11 @@ async fn search_communities(
         SELECT 
             c.id, c.name, c.display_name, c.description, c.subscriber_count, 
             c.post_count, c.community_type, c.icon_url, c.is_nsfw,
-            ts_rank(search_vector, to_tsquery('english', $1)) as relevance_score,
+            ts_rank(c.search_vector, to_tsquery('english', $1)) as relevance_score,
             ts_headline('english', COALESCE(c.description, c.display_name), to_tsquery('english', $1)) as highlight
         FROM communities c
         WHERE c.status = 'active' 
-        AND to_tsquery('english', $1) @@ search_vector
+        AND to_tsquery('english', $1) @@ c.search_vector
         ORDER BY {}
         LIMIT $2 OFFSET $3
         "#,
@@ -382,7 +382,7 @@ async fn search_communities(
             .map_err(|e| AppError::Internal(e.to_string()))?,
             icon_url: row.get("icon_url"),
             is_nsfw: row.get("is_nsfw"),
-            relevance_score: row.get::<f64, _>("relevance_score") as f32,
+            relevance_score: row.get::<f32, _>("relevance_score"),
             highlight: row.get("highlight"),
         };
         communities.push(community);
@@ -400,7 +400,7 @@ async fn search_users(
 ) -> Result<Vec<SearchUserResult>> {
     let sort_clause = match query.sort.as_ref().unwrap_or(&SearchSort::Relevance) {
         SearchSort::Relevance => {
-            "ts_rank(search_vector, to_tsquery('english', $1)) DESC, u.karma_points DESC"
+            "ts_rank(u.search_vector, to_tsquery('english', $1)) DESC, u.karma_points DESC"
         }
         SearchSort::New => "u.created_at DESC",
         SearchSort::Top => "u.karma_points DESC, u.created_at DESC",
@@ -412,11 +412,11 @@ async fn search_users(
         SELECT 
             u.id, u.username, u.display_name, u.bio, u.karma_points, 
             u.avatar_url, u.is_verified, u.created_at,
-            ts_rank(search_vector, to_tsquery('english', $1)) as relevance_score,
+            ts_rank(u.search_vector, to_tsquery('english', $1)) as relevance_score,
             ts_headline('english', COALESCE(u.bio, u.display_name, u.username), to_tsquery('english', $1)) as highlight
         FROM users u
         WHERE u.status = 'active' 
-        AND to_tsquery('english', $1) @@ search_vector
+        AND to_tsquery('english', $1) @@ u.search_vector
         ORDER BY {}
         LIMIT $2 OFFSET $3
         "#,
@@ -441,7 +441,7 @@ async fn search_users(
             avatar_url: row.get("avatar_url"),
             is_verified: row.get("is_verified"),
             created_at: row.get("created_at"),
-            relevance_score: row.get::<f64, _>("relevance_score") as f32,
+            relevance_score: row.get::<f32, _>("relevance_score"),
             highlight: row.get("highlight"),
         };
         users.push(user);
@@ -655,13 +655,12 @@ async fn save_search_history(
 ) -> Result<()> {
     sqlx::query!(
         r#"
-        INSERT INTO search_history (user_id, query, search_type, results_count)
-        VALUES ($1, $2, $3, $4)
-        "#,
+    INSERT INTO search_history (user_id, query, search_type, results_count)
+    VALUES ($1, $2, $3, $4)
+    "#,
         user_id,
         query.q,
-        serde_json::to_string(&query.search_type.as_ref().unwrap_or(&SearchType::All))
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+        query.search_type.as_ref().unwrap_or(&SearchType::All) as &SearchType,
         results_count
     )
     .execute(db)
