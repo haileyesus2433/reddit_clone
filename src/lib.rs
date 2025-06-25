@@ -22,11 +22,17 @@ use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
-use crate::{config::Config, redis::RedisClient};
+use crate::{
+    config::Config,
+    redis::RedisClient,
+    services::{apple_service::AppleOAuthService, auth_service::GoogleOAuthService},
+};
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
+    pub google_service: Arc<GoogleOAuthService>,
+    pub apple_service: Arc<AppleOAuthService>,
     pub redis: Arc<RedisClient>,
     pub config: Arc<Config>,
 }
@@ -64,8 +70,22 @@ pub fn create_app(state: AppState) -> Router {
         )
         .route("/api/auth/verify-email", post(handlers::auth::verify_email))
         .route("/api/auth/verify-phone", post(handlers::auth::verify_phone))
-        .route("/api/auth/oauth/google", post(handlers::auth::google_oauth))
-        .route("/api/auth/oauth/apple", post(handlers::auth::apple_oauth));
+        .route(
+            "/api/auth/oauth/google",
+            get(handlers::auth::initiate_google_oauth),
+        )
+        .route(
+            "/api/auth/oauth/google/callback",
+            get(handlers::auth::google_oauth),
+        )
+        .route(
+            "/api/auth/oauth/apple",
+            get(handlers::auth::initiate_apple_oauth),
+        )
+        .route(
+            "/api/auth/oauth/apple/callback",
+            post(handlers::auth::apple_oauth),
+        );
 
     // Protected routes (auth required) - no middleware needed
     let protected_routes = Router::new()

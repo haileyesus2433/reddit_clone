@@ -1,4 +1,9 @@
-use axum::{extract::State, http::StatusCode, response::Json};
+use axum::{
+    Form,
+    extract::{Query, State},
+    http::StatusCode,
+    response::{Json, Redirect},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -365,12 +370,147 @@ pub async fn refresh_token(
     ))
 }
 
+pub async fn initiate_apple_oauth(State(state): State<AppState>) -> Result<Redirect> {
+    let (auth_url, csrf_token) = state.apple_service.get_authorization_url();
+
+    let state_key = format!("apple-oauth-state-{}", csrf_token.secret());
+
+    state
+        .redis
+        .cache_set(&state_key, csrf_token.secret(), 10 * 60)
+        .await?;
+
+    Ok(Redirect::to(auth_url.as_str()))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AppleOAuthCallbackForm {
+    pub code: String,
+    pub state: String,
+    pub id_token: Option<String>,
+}
+
+pub async fn apple_oauth(
+    State(state): State<AppState>,
+    Form(form): Form<AppleOAuthCallbackForm>,
+) -> Result<(StatusCode, Json<Value>)> {
+    let state_key = format!("apple-oauth-state-{}", form.state);
+    let csrf_token = match state.redis.cache_get(&state_key).await {
+        Ok(Some(state)) => state,
+        Ok(None) => {
+            return Err(AppError::Authorization("Invalid OAuth state".to_string()));
+        }
+        Err(e) => {
+            tracing::error!("Failed to retrieve OAuth state: {}", e);
+            return Err(AppError::Internal("OAuth verification failed".to_string()));
+        }
+    };
+
+    if !csrf_token.eq(&form.state) {
+        return Err(AppError::Authorization("Invalid OAuth state".to_string()));
+    }
+
+    let _ = state.redis.cache_delete(&state_key).await;
+
+    let apple_user = match state.apple_service.get_user_data(form.id_token).await {
+        Ok(user) => user,
+        Err(e) => {
+            tracing::error!("Apple OAuth service {}", e);
+            return Err(AppError::Authorization("No ID token provided".to_string()));
+        }
+    };
+
+    let existing_user = sqlx::query_as::<_, User>(
+        "SELECT * FROM users WHERE oauth_id = $1 AND auth_provider = 'apple' AND status != 'deleted'"
+    )
+    .bind(&apple_user.user_id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let user = if let Some(user) = existing_user {
+        sqlx::query("UPDATE users SET last_login_at = $1 WHERE id = $2")
+            .bind(chrono::Utc::now())
+            .bind(user.id)
+            .execute(&state.db)
+            .await?;
+        user
+    } else {
+        todo!("User creation logic")
+    };
+
+    let (token, claims) = Claims::new(user.id, user.username.clone(), &state.config.jwt_secret)?;
+
+    state
+        .redis
+        .store_session(&claims.jti, &user.id.to_string(), 86400)
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "message": "Apple OAuth successful",
+            "token": token,
+            "user": UserResponse::from(user)
+        })),
+    ))
+}
+
+pub async fn initiate_google_oauth(State(state): State<AppState>) -> Result<Redirect> {
+    let (auth_url, csrf_token) = state.google_service.get_authorization_url();
+
+    let state_key = format!("oauth-state-{}", csrf_token.secret());
+
+    state
+        .redis
+        .cache_set(&state_key, csrf_token.secret(), 10 * 60)
+        .await?;
+
+    Ok(Redirect::to(auth_url.as_str()))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OAuthCallbackQuery {
+    pub code: String,
+    pub state: String,
+}
+
 pub async fn google_oauth(
     State(state): State<AppState>,
-    Json(payload): Json<GoogleOAuthRequest>,
+    Query(query): Query<OAuthCallbackQuery>,
 ) -> Result<(StatusCode, Json<Value>)> {
-    // Get user info from Google
-    let google_user = get_google_user_info(&payload.access_token).await?;
+    let state_key = format!("oauth-state-{}", query.state);
+    let csrf_token = match state.redis.cache_get(&state_key).await {
+        Ok(Some(state)) => state,
+        Ok(None) => {
+            return Err(AppError::Authorization("Invalid OAuth state".to_string()));
+        }
+        Err(e) => {
+            tracing::error!("Failed to retrieve OAuth state: {}", e);
+            return Err(AppError::Internal("OAuth verification failed".to_string()));
+        }
+    };
+
+    if !csrf_token.eq(&query.state) {
+        return Err(AppError::Authorization("Invalid OAuth state".to_string()));
+    }
+
+    let _ = state.redis.cache_delete(&state_key).await;
+
+    let access_token = match state
+        .google_service
+        .exchange_code_for_token(&query.code)
+        .await
+    {
+        Ok(token) => token,
+        Err(e) => {
+            tracing::error!("Failed to exchange code for token: {}", e);
+            return Err(AppError::Authorization(
+                "Failed to authenticate with Google".to_string(),
+            ));
+        }
+    };
+
+    let google_user = get_google_user_info(access_token.secret()).await?;
 
     // Check if user already exists
     let existing_user = sqlx::query_as::<_, User>(
@@ -468,18 +608,6 @@ pub async fn google_oauth(
             "token": token,
             "user": UserResponse::from(user)
         })),
-    ))
-}
-
-pub async fn apple_oauth(
-    State(_state): State<AppState>,
-    Json(_payload): Json<AppleOAuthRequest>,
-) -> Result<(StatusCode, Json<Value>)> {
-    // TODO: Implement Apple OAuth verification
-    // This would involve verifying the Apple ID token
-    // For now, return not implemented
-    Err(AppError::Internal(
-        "Apple OAuth not yet implemented".to_string(),
     ))
 }
 

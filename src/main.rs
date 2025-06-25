@@ -1,6 +1,8 @@
 use reddit_clone::config::Config;
 use reddit_clone::database::create_pool;
 use reddit_clone::redis::RedisClient;
+use reddit_clone::services::apple_service::AppleOAuthService;
+use reddit_clone::services::auth_service::GoogleOAuthService;
 use reddit_clone::{AppState, create_app};
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -36,10 +38,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let redis = Arc::new(RedisClient::new(&config.redis_url)?);
     tracing::info!("Redis client created");
 
+    // Create Google oauth service
+    let google_service = Arc::new(GoogleOAuthService::new(
+        &config.google_client_id.clone().unwrap_or_default(),
+        &config.google_client_secret.clone().unwrap_or_default(),
+        &format!(
+            "http://{}:{}/api/auth/oauth/google/callback",
+            config.host, config.port
+        ),
+    )?);
+
+    // Create Apple oauth service
+    let apple_service = Arc::new(AppleOAuthService::new(
+        &config.apple_client_id.clone().unwrap_or_default(),
+        &config.apple_team_id.clone().unwrap_or_default(),
+        &config.apple_key_id.clone().unwrap_or_default(),
+        &config.apple_private_key.clone().unwrap_or_default(),
+        &format!(
+            "http://{}:{}/api/auth/oauth/apple/callback",
+            config.host, config.port
+        ),
+    )?);
+
     // Create application state
     let state = AppState {
         db,
         redis,
+        google_service,
+        apple_service,
         config: Arc::new(config.clone()),
     };
 
