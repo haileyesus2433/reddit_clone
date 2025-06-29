@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use crate::models::UploadConfig;
+
 use std::env;
 
 #[derive(Debug, Clone)]
@@ -33,10 +34,29 @@ pub struct Config {
     // App settings
     pub app_name: String,
     pub base_url: String,
+
+    pub upload_config: UploadConfig,
 }
 
 impl Config {
     pub fn from_env() -> Result<Self, env::VarError> {
+        let upload_dir = env::var("UPLOAD_DIR").unwrap_or_else(|_| "./uploads".to_string());
+        let max_file_size: i64 = env::var("MAX_FILE_SIZE")
+            .unwrap_or_else(|_| "10485760".to_string()) // 10MB default
+            .parse()
+            .unwrap_or(10485760);
+
+        let mut upload_config = UploadConfig::default();
+        upload_config.upload_dir = upload_dir;
+
+        if max_file_size != 10485760 {
+            for (_, size) in upload_config.max_file_sizes.iter_mut() {
+                if *size > max_file_size {
+                    *size = max_file_size;
+                }
+            }
+        }
+
         Ok(Self {
             database_url: env::var("DATABASE_URL")?,
             redis_url: env::var("REDIS_URL")?,
@@ -80,6 +100,7 @@ impl Config {
             // App
             app_name: env::var("APP_NAME").unwrap_or_else(|_| "Reddit Clone".to_string()),
             base_url: env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string()),
+            upload_config,
         })
     }
 }

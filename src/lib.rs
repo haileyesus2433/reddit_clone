@@ -246,6 +246,77 @@ pub fn create_app(state: AppState) -> Router {
         .route(
             "/api/search/track-click",
             post(handlers::search::track_search_click),
+        )
+        // Upload routes
+        .route(
+            "/api/upload/initiate",
+            post(handlers::upload::initiate_upload),
+        )
+        .route("/api/upload/chunk", post(handlers::upload::upload_chunk))
+        .route(
+            "/api/upload/complete",
+            post(handlers::upload::complete_upload),
+        )
+        .route(
+            "/api/upload/status/{upload_id}",
+            get(handlers::upload::get_upload_status),
+        )
+        .route(
+            "/api/upload/cancel/{upload_id}",
+            delete(handlers::upload::cancel_upload),
+        )
+        // Direct upload routes
+        .route("/api/upload/avatar", post(handlers::upload::upload_avatar))
+        .route("/api/upload/banner", post(handlers::upload::upload_banner))
+        .route(
+            "/api/upload/post-image",
+            post(handlers::upload::upload_post_image),
+        )
+        .route(
+            "/api/upload/comment-image",
+            post(handlers::upload::upload_comment_image),
+        )
+        // Media management routes
+        .route(
+            "/api/media/{media_id}",
+            delete(handlers::upload::delete_media),
+        )
+        .route("/api/media/my", get(handlers::upload::get_user_media))
+        // Notification routes
+        .route(
+            "/api/notifications",
+            get(handlers::notifications::get_notifications),
+        )
+        .route(
+            "/api/notifications/count",
+            get(handlers::notifications::get_unread_count),
+        )
+        .route(
+            "/api/notifications/read",
+            post(handlers::notifications::mark_notifications_read),
+        )
+        .route(
+            "/api/notifications/read-all",
+            post(handlers::notifications::mark_all_notifications_read),
+        )
+        .route(
+            "/api/notifications/{notification_id}",
+            delete(handlers::notifications::delete_notification),
+        )
+        // WebSocket for real-time features
+        .route("/api/ws", get(handlers::notifications::websocket_handler))
+        // Typing indicators
+        .route(
+            "/api/typing/start",
+            post(handlers::notifications::start_typing),
+        )
+        .route(
+            "/api/typing/stop",
+            post(handlers::notifications::stop_typing),
+        )
+        .route(
+            "/api/typing/users",
+            get(handlers::notifications::get_typing_users),
         );
 
     Router::new()

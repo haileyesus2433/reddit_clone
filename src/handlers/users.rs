@@ -286,7 +286,7 @@ pub async fn follow_user(
     .await?;
 
     // Create notification
-    user_service::create_follow_notification(&state, auth_user.user_id, user_id).await?;
+    // user_service::create_follow_notification(&state, auth_user.user_id, user_id).await?;
 
     Ok(Json(json!({
         "message": "User followed successfully"

@@ -50,7 +50,7 @@ impl SmsService {
             self.account_sid
         );
 
-        let auth_header = base64::engine::general_purpose::STANDARD
+        let _auth_header = base64::engine::general_purpose::STANDARD
             .encode(format!("{}:{}", self.account_sid, self.auth_token));
 
         let form_data = [
@@ -132,6 +132,42 @@ impl SmsService {
         let message = format!(
             "{} Security Alert: {} was performed on your account. If this wasn't you, please secure your account immediately.",
             app_name, action
+        );
+
+        self.send_sms(to_phone, &message).await
+    }
+
+    pub async fn send_notification_sms(
+        &self,
+        to_phone: &str,
+        username: &str,
+        title: &str,
+    ) -> Result<String> {
+        let message = format!(
+            "Reddit Clone: {} - {}. Check your notifications for details.",
+            title, username
+        );
+
+        self.send_sms(to_phone, &message).await
+    }
+
+    pub async fn send_mention_notification(
+        &self,
+        to_phone: &str,
+        mentioner_username: &str,
+    ) -> Result<String> {
+        let message = format!(
+            "Reddit Clone: {} mentioned you in a comment. Check the app to see what they said!",
+            mentioner_username
+        );
+
+        self.send_sms(to_phone, &message).await
+    }
+
+    pub async fn send_urgent_notification(&self, to_phone: &str, title: &str) -> Result<String> {
+        let message = format!(
+            "Reddit Clone URGENT: {}. Please check your account immediately.",
+            title
         );
 
         self.send_sms(to_phone, &message).await

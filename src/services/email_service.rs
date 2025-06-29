@@ -359,4 +359,166 @@ impl EmailService {
         )
         .await
     }
+
+    pub async fn send_notification_email(
+        &self,
+        to_email: &str,
+        username: &str,
+        title: &str,
+        content: &str,
+    ) -> Result<()> {
+        let subject = format!("Reddit Clone - {}", title);
+        let html_content = format!(
+            r#"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Notification</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background-color: #ff4500; color: white; padding: 20px; text-align: center; }}
+                    .content {{ padding: 20px; background-color: #f9f9f9; }}
+                    .notification {{ background-color: #e8f5e8; border: 1px solid #4caf50; padding: 15px; border-radius: 4px; margin: 15px 0; }}
+                    .footer {{ padding: 20px; text-align: center; color: #666; font-size: 12px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Reddit Clone Notification</h1>
+                    </div>
+                    <div class="content">
+                        <h2>Hi {}!</h2>
+                        <div class="notification">
+                            <h3>{}</h3>
+                            <p>{}</p>
+                        </div>
+                        <p>You can manage your notification preferences in your account settings.</p>
+                    </div>
+                    <div class="footer">
+                        <p>© 2024 Reddit Clone. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            "#,
+            username, title, content
+        );
+
+        let text_content = format!(
+            r#"
+            Hi {}!
+
+            {}
+
+            {}
+
+            You can manage your notification preferences in your account settings.
+
+            © 2024 Reddit Clone. All rights reserved.
+            "#,
+            username, title, content
+        );
+
+        self.send_email(
+            to_email,
+            Some(username),
+            &subject,
+            &html_content,
+            &text_content,
+        )
+        .await
+    }
+
+    pub async fn send_digest_email(
+        &self,
+        to_email: &str,
+        username: &str,
+        notifications: &[crate::models::NotificationResponse],
+    ) -> Result<()> {
+        let subject = "Your Reddit Clone Daily Digest";
+
+        let mut notification_items = String::new();
+        for notification in notifications {
+            notification_items.push_str(&format!(
+                "<li><strong>{}</strong><br>{}</li>",
+                notification.title,
+                notification.content.as_deref().unwrap_or("")
+            ));
+        }
+
+        let html_content = format!(
+            r#"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Daily Digest</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background-color: #ff4500; color: white; padding: 20px; text-align: center; }}
+                    .content {{ padding: 20px; background-color: #f9f9f9; }}
+                    .digest {{ background-color: white; border: 1px solid #ddd; padding: 15px; border-radius: 4px; margin: 15px 0; }}
+                    .footer {{ padding: 20px; text-align: center; color: #666; font-size: 12px; }}
+                    ul {{ list-style-type: none; padding: 0; }}
+                    li {{ margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 4px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Your Daily Digest</h1>
+                    </div>
+                    <div class="content">
+                        <h2>Hi {}!</h2>
+                        <p>Here's what happened while you were away:</p>
+                        <div class="digest">
+                            <ul>
+                                {}
+                            </ul>
+                        </div>
+                        <p>Visit Reddit Clone to see more details and interact with your community.</p>
+                    </div>
+                    <div class="footer">
+                        <p>© 2024 Reddit Clone. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            "#,
+            username, notification_items
+        );
+
+        let text_content = format!(
+            r#"
+            Hi {}!
+
+            Here's your daily digest from Reddit Clone:
+
+            {}
+
+            Visit Reddit Clone to see more details and interact with your community.
+
+            © 2024 Reddit Clone. All rights reserved.
+            "#,
+            username,
+            notifications
+                .iter()
+                .map(|n| format!("- {}: {}", n.title, n.content.as_deref().unwrap_or("")))
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+
+        self.send_email(
+            to_email,
+            Some(username),
+            subject,
+            &html_content,
+            &text_content,
+        )
+        .await
+    }
 }

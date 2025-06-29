@@ -131,12 +131,15 @@ pub async fn get_posts(
             c.id as community_id, c.name as community_name, 
             c.display_name as community_display_name, c.icon_url as community_icon,
             CASE WHEN pv.vote_type IS NOT NULL THEN pv.vote_type ELSE NULL END as user_vote,
-            pm.thumbnail_url
+            -- Get thumbnail from media variants
+            COALESCE(mv.cdn_url, mv.file_path) as thumbnail_url
         FROM posts p
         JOIN users u ON p.author_id = u.id
         JOIN communities c ON p.community_id = c.id
         LEFT JOIN post_votes pv ON p.id = pv.post_id AND pv.user_id = $1
         LEFT JOIN post_media pm ON p.id = pm.post_id AND pm.media_order = 1
+        LEFT JOIN media_files mf ON pm.media_file_id = mf.id
+        LEFT JOIN media_variants mv ON mf.id = mv.media_file_id AND mv.variant_type = 'thumbnail'
         WHERE p.status = 'active'
     "#
     .to_string();
@@ -192,7 +195,6 @@ pub async fn get_posts(
 
     let mut posts = Vec::new();
     for row in rows {
-        // Get flair for each post
         let flair = get_post_flair(db, row.get("id")).await?;
 
         posts.push(PostListResponse {
@@ -229,7 +231,6 @@ pub async fn get_posts(
 
     Ok(posts)
 }
-
 pub async fn get_posts_count(
     db: &PgPool,
     community_name: Option<&str>,
@@ -291,12 +292,15 @@ pub async fn get_user_posts(
             c.id as community_id, c.name as community_name, 
             c.display_name as community_display_name, c.icon_url as community_icon,
             CASE WHEN pv.vote_type IS NOT NULL THEN pv.vote_type ELSE NULL END as user_vote,
-            pm.thumbnail_url
+            -- Get thumbnail from media variants
+            COALESCE(mv.cdn_url, mv.file_path) as thumbnail_url
         FROM posts p
         JOIN users u ON p.author_id = u.id
         JOIN communities c ON p.community_id = c.id
         LEFT JOIN post_votes pv ON p.id = pv.post_id AND pv.user_id = $1
         LEFT JOIN post_media pm ON p.id = pm.post_id AND pm.media_order = 1
+        LEFT JOIN media_files mf ON pm.media_file_id = mf.id
+        LEFT JOIN media_variants mv ON mf.id = mv.media_file_id AND mv.variant_type = 'thumbnail'
         WHERE p.status = 'active' AND p.author_id = $2
     "#
     .to_string();
@@ -400,13 +404,16 @@ pub async fn get_saved_posts(
             c.id as community_id, c.name as community_name, 
             c.display_name as community_display_name, c.icon_url as community_icon,
             pv.vote_type as user_vote,
-            pm.thumbnail_url
+            -- Get thumbnail from media variants
+            COALESCE(mv.cdn_url, mv.file_path) as thumbnail_url
         FROM saved_posts sp
         JOIN posts p ON sp.post_id = p.id
         JOIN users u ON p.author_id = u.id
         JOIN communities c ON p.community_id = c.id
         LEFT JOIN post_votes pv ON p.id = pv.post_id AND pv.user_id = $1
         LEFT JOIN post_media pm ON p.id = pm.post_id AND pm.media_order = 1
+        LEFT JOIN media_files mf ON pm.media_file_id = mf.id
+        LEFT JOIN media_variants mv ON mf.id = mv.media_file_id AND mv.variant_type = 'thumbnail'
         WHERE sp.user_id = $1 AND p.status = 'active'
         ORDER BY sp.created_at DESC
         LIMIT $2 OFFSET $3
@@ -567,11 +574,31 @@ pub async fn update_post_hot_score(db: &PgPool, post_id: Uuid) -> Result<()> {
 async fn get_post_media(db: &PgPool, post_id: Uuid) -> Result<Vec<PostMediaResponse>> {
     let media = sqlx::query!(
         r#"
-        SELECT id, media_url, thumbnail_url, media_type, file_size, 
-               width, height, duration, media_order
-        FROM post_media 
-        WHERE post_id = $1 
-        ORDER BY media_order
+        SELECT 
+            pm.id,
+            pm.media_order,
+            mf.id as media_file_id,
+            mf.original_name,
+            mf.file_path,
+            mf.cdn_url,
+            mf.file_type,
+            mf.mime_type,
+            mf.file_size,
+            mf.width,
+            mf.height,
+            mf.duration,
+            -- Get thumbnail variant
+            (
+                SELECT COALESCE(mv.cdn_url, mv.file_path)
+                FROM media_variants mv 
+                WHERE mv.media_file_id = mf.id 
+                AND mv.variant_type = 'thumbnail'
+                LIMIT 1
+            ) as thumbnail_url
+        FROM post_media pm
+        JOIN media_files mf ON pm.media_file_id = mf.id
+        WHERE pm.post_id = $1 AND mf.status = 'completed'
+        ORDER BY pm.media_order
         "#,
         post_id
     )
@@ -582,10 +609,10 @@ async fn get_post_media(db: &PgPool, post_id: Uuid) -> Result<Vec<PostMediaRespo
         .into_iter()
         .map(|row| PostMediaResponse {
             id: row.id,
-            media_url: row.media_url,
+            media_url: row.cdn_url.unwrap_or(row.file_path),
             thumbnail_url: row.thumbnail_url,
-            media_type: row.media_type,
-            file_size: row.file_size,
+            media_type: row.mime_type,
+            file_size: Some(row.file_size),
             width: row.width,
             height: row.height,
             duration: row.duration,

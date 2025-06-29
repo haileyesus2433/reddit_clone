@@ -3,6 +3,7 @@ use reddit_clone::database::create_pool;
 use reddit_clone::redis::RedisClient;
 use reddit_clone::services::apple_service::AppleOAuthService;
 use reddit_clone::services::auth_service::GoogleOAuthService;
+use reddit_clone::services::background_jobs::BackgroundJobsService;
 use reddit_clone::services::email_service::EmailService;
 use reddit_clone::services::sms_service::SmsService;
 use reddit_clone::{AppState, create_app};
@@ -37,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Database migrations completed");
 
     // Create Redis client
-    let redis = Arc::new(RedisClient::new(&config.redis_url)?);
+    let redis = Arc::new(RedisClient::new(&config.redis_url).await?);
     tracing::info!("Redis client created");
 
     // Create Google oauth service
@@ -62,6 +63,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
     )?);
 
+    let email_service = Arc::new(EmailService::new(&config));
+    let sms_service = Arc::new(SmsService::new(&config));
+
+    // Initialize background jobs
+    let background_jobs = BackgroundJobsService::new(
+        db.clone(),
+        redis.clone(),
+        email_service.clone(),
+        sms_service.clone(),
+    );
+
+    // Start background jobs
+    background_jobs.start_all_jobs().await;
+
     // Create application state
     let state = AppState {
         db,
@@ -69,8 +84,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         google_service,
         apple_service,
         config: Arc::new(config.clone()),
-        email_service: Arc::new(EmailService::new(&config)),
-        sms_service: Arc::new(SmsService::new(&config)),
+        email_service,
+        sms_service,
     };
 
     // Create application

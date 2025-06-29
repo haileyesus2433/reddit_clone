@@ -171,11 +171,13 @@ async fn search_posts(
             c.icon_url as community_icon,
             ts_rank(p.search_vector, to_tsquery('english', $1)) as relevance_score,
             ts_headline('english', COALESCE(p.content, p.title), to_tsquery('english', $1)) as highlight,
-            pm.thumbnail_url
+            COALESCE(mv.cdn_url, mv.file_path) as thumbnail_url
         FROM posts p
         JOIN users u ON p.author_id = u.id
         JOIN communities c ON p.community_id = c.id
         LEFT JOIN post_media pm ON p.id = pm.post_id AND pm.media_order = 1
+        LEFT JOIN media_files mf ON pm.media_file_id = mf.id
+        LEFT JOIN media_variants mv ON mf.id = mv.media_file_id AND mv.variant_type = 'thumbnail'
         WHERE {}
         ORDER BY {}
         LIMIT $2 OFFSET $3
@@ -227,7 +229,6 @@ async fn search_posts(
 
     Ok(posts)
 }
-
 async fn search_comments(
     db: &PgPool,
     ts_query: &str,

@@ -1,9 +1,14 @@
 pub mod apple_service;
 pub mod auth_service;
+pub mod background_jobs;
 pub mod comment_service;
 pub mod community_service;
 pub mod email_service;
+pub mod notification_service;
 pub mod post_service;
 pub mod search_service;
 pub mod sms_service;
+pub mod typing_service;
+pub mod upload_service;
 pub mod user_service;
+pub mod websocket_service;

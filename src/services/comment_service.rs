@@ -651,10 +651,22 @@ pub async fn can_user_moderate_comment(
 async fn get_comment_media(db: &PgPool, comment_id: Uuid) -> Result<Vec<CommentMediaResponse>> {
     let media_rows = sqlx::query!(
         r#"
-        SELECT id, media_url, thumbnail_url, media_type, width, height
-        FROM comment_media
-        WHERE comment_id = $1
-        ORDER BY media_order ASC
+        SELECT 
+            cm.id,
+            mf.cdn_url as media_url,
+            -- Get the first thumbnail variant if exists
+            (
+                SELECT mv.cdn_url FROM media_variants mv 
+                WHERE mv.media_file_id = mf.id AND mv.variant_type = 'thumbnail'
+                ORDER BY mv.created_at ASC LIMIT 1
+            ) as thumbnail_url,
+            mf.file_type as media_type,
+            mf.width,
+            mf.height
+        FROM comment_media cm
+        JOIN media_files mf ON cm.media_file_id = mf.id
+        WHERE cm.comment_id = $1
+        ORDER BY cm.media_order ASC
         "#,
         comment_id
     )
@@ -665,7 +677,7 @@ async fn get_comment_media(db: &PgPool, comment_id: Uuid) -> Result<Vec<CommentM
         .into_iter()
         .map(|row| CommentMediaResponse {
             id: row.id,
-            media_url: row.media_url,
+            media_url: row.media_url.unwrap_or_default(),
             thumbnail_url: row.thumbnail_url,
             media_type: row.media_type,
             width: row.width,
