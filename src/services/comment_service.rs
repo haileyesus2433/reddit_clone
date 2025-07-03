@@ -190,7 +190,7 @@ pub async fn get_post_comments(
         r#"
         SELECT 
             c.id, c.content, c.post_id, c.author_id, c.parent_comment_id, 
-            c.status as "status: CommentStatus", c.is_edited, c.upvotes, c.downvotes, 
+            c.status, c.is_edited, c.upvotes, c.downvotes, 
             c.score, c.reply_count, c.depth, c.created_at, c.updated_at, c.edited_at,
             u.username, u.display_name as user_display_name, u.avatar_url, u.is_verified,
             CASE WHEN cv.vote_type IS NOT NULL THEN cv.vote_type ELSE NULL END as user_vote,
@@ -234,11 +234,7 @@ pub async fn get_post_comments(
             content: row.get("content"),
             post_id: row.get("post_id"),
             parent_comment_id: row.get("parent_comment_id"),
-            status: serde_json::from_value(
-                serde_json::to_value(row.get::<serde_json::Value, _>("status"))
-                    .map_err(|_e| AppError::Internal("Missing status".to_string()))?,
-            )
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+            status: row.get("status"),
             is_edited: row.get("is_edited"),
             upvotes: row.get("upvotes"),
             downvotes: row.get("downvotes"),

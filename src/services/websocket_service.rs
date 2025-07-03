@@ -127,6 +127,11 @@ impl WebSocketService {
                 match msg {
                     Ok(Message::Text(text)) => {
                         if let Ok(ws_message) = serde_json::from_str::<WebSocketMessage>(&text) {
+                            tracing::info!(
+                                "Received WebSocket message: {:?} from user: {}",
+                                ws_message,
+                                user_id
+                            );
                             Self::handle_websocket_message(
                                 ws_message,
                                 user_id,

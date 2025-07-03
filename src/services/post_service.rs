@@ -65,20 +65,20 @@ pub async fn get_post_by_id(
         title: row.title,
         content: row.content,
         url: row.url,
-        post_type: serde_json::from_str(
-            row.post_type_str
-                .as_ref()
-                .map(|s| s.as_str())
-                .ok_or_else(|| AppError::Internal("Missing post_type_str".to_string()))?,
-        )
-        .map_err(|e| AppError::Internal(e.to_string()))?,
-        status: serde_json::from_str(
-            row.status_str
-                .as_ref()
-                .map(|s| s.as_str())
-                .ok_or_else(|| AppError::Internal("Missing status_str".to_string()))?,
-        )
-        .map_err(|e| AppError::Internal(e.to_string()))?,
+        post_type: row
+            .post_type_str
+            .as_ref()
+            .map(|s| s.parse())
+            .transpose()
+            .map_err(|e| AppError::Internal(format!("Invalid post_type: {}", e)))?
+            .ok_or_else(|| AppError::Internal("Missing post_type_str".to_string()))?,
+        status: row
+            .status_str
+            .as_ref()
+            .map(|s| s.parse())
+            .transpose()
+            .map_err(|e| AppError::Internal(format!("Invalid status: {}", e)))?
+            .ok_or_else(|| AppError::Internal("Missing status_str".to_string()))?,
         is_nsfw: row.is_nsfw.unwrap_or_default(),
         is_spoiler: row.is_spoiler.unwrap_or_default(),
         is_locked: row.is_locked.unwrap_or_default(),
@@ -200,11 +200,7 @@ pub async fn get_posts(
         posts.push(PostListResponse {
             id: row.get("id"),
             title: row.get("title"),
-            post_type: serde_json::from_value(
-                serde_json::to_value(row.get::<serde_json::Value, _>("post_type"))
-                    .map_err(|e| AppError::Internal(e.to_string()))?,
-            )
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+            post_type: row.get("post_type"),
             is_nsfw: row.get("is_nsfw"),
             is_spoiler: row.get("is_spoiler"),
             author: PostAuthor {
@@ -345,11 +341,7 @@ pub async fn get_user_posts(
         posts.push(PostListResponse {
             id: row.get("id"),
             title: row.get("title"),
-            post_type: serde_json::from_value(
-                serde_json::to_value(row.get::<serde_json::Value, _>("post_type"))
-                    .map_err(|e| AppError::Internal(e.to_string()))?,
-            )
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+            post_type: row.get("post_type"),
             is_nsfw: row.get("is_nsfw"),
             is_spoiler: row.get("is_spoiler"),
             author: PostAuthor {
@@ -394,17 +386,15 @@ pub async fn get_saved_posts(
     limit: u32,
     offset: u32,
 ) -> Result<Vec<PostListResponse>> {
-    let rows = sqlx::query!(
-        r#"
+    let query = r#"
         SELECT 
-            p.id, p.title, p.post_type as "post_type: serde_json::Value", 
+            p.id, p.title, p.post_type, 
             p.is_nsfw, p.is_spoiler, p.score, p.comment_count, p.created_at,
             u.id as author_id, u.username, u.display_name as user_display_name, 
             u.avatar_url, u.is_verified,
             c.id as community_id, c.name as community_name, 
             c.display_name as community_display_name, c.icon_url as community_icon,
             pv.vote_type as user_vote,
-            -- Get thumbnail from media variants
             COALESCE(mv.cdn_url, mv.file_path) as thumbnail_url
         FROM saved_posts sp
         JOIN posts p ON sp.post_id = p.id
@@ -417,46 +407,43 @@ pub async fn get_saved_posts(
         WHERE sp.user_id = $1 AND p.status = 'active'
         ORDER BY sp.created_at DESC
         LIMIT $2 OFFSET $3
-        "#,
-        user_id,
-        limit as i64,
-        offset as i64
-    )
-    .fetch_all(db)
-    .await?;
+    "#;
+
+    let rows = sqlx::query(query)
+        .bind(user_id)
+        .bind(limit as i64)
+        .bind(offset as i64)
+        .fetch_all(db)
+        .await?;
 
     let mut posts = Vec::new();
     for row in rows {
-        let flair = get_post_flair(db, row.id).await?;
+        let flair = get_post_flair(db, row.get("id")).await?;
 
         posts.push(PostListResponse {
-            id: row.id,
-            title: row.title,
-            post_type: serde_json::from_value(
-                serde_json::to_value(row.post_type)
-                    .map_err(|e| AppError::Internal(e.to_string()))?,
-            )
-            .map_err(|e| AppError::Internal(e.to_string()))?,
-            is_nsfw: row.is_nsfw.unwrap_or_default(),
-            is_spoiler: row.is_spoiler.unwrap_or_default(),
+            id: row.get("id"),
+            title: row.get("title"),
+            post_type: row.get("post_type"),
+            is_nsfw: row.get("is_nsfw"),
+            is_spoiler: row.get("is_spoiler"),
             author: PostAuthor {
-                id: row.author_id,
-                username: row.username,
-                display_name: row.user_display_name,
-                avatar_url: row.avatar_url,
-                is_verified: row.is_verified.unwrap_or_default(),
+                id: row.get("author_id"),
+                username: row.get("username"),
+                display_name: row.get("user_display_name"),
+                avatar_url: row.get("avatar_url"),
+                is_verified: row.get("is_verified"),
             },
             community: PostCommunity {
-                id: row.community_id,
-                name: row.community_name,
-                display_name: row.community_display_name,
-                icon_url: row.community_icon,
+                id: row.get("community_id"),
+                name: row.get("community_name"),
+                display_name: row.get("community_display_name"),
+                icon_url: row.get("community_icon"),
             },
-            score: row.score.unwrap_or_default(),
-            comment_count: row.comment_count.unwrap_or_default(),
-            created_at: row.created_at.unwrap_or_default(),
-            user_vote: Some(row.user_vote),
-            thumbnail_url: row.thumbnail_url,
+            score: row.get("score"),
+            comment_count: row.get("comment_count"),
+            created_at: row.get("created_at"),
+            user_vote: row.get("user_vote"),
+            thumbnail_url: row.get("thumbnail_url"),
             flair,
         });
     }

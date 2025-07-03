@@ -1,10 +1,12 @@
+use std::str::FromStr;
+
+use crate::models::PostMediaResponse;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+
 use uuid::Uuid;
 use validator::Validate;
-
-use crate::models::PostMediaResponse;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "post_type", rename_all = "lowercase")]
@@ -15,6 +17,19 @@ pub enum PostType {
     Video,
 }
 
+impl FromStr for PostType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "text" | "Text" => Ok(PostType::Text),
+            "link" | "Link" => Ok(PostType::Link),
+            "image" | "Image" => Ok(PostType::Image),
+            "video" | "Video" => Ok(PostType::Video),
+            _ => Err(format!("Unknown PostType: {}", s)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, PartialEq, Eq)]
 #[sqlx(type_name = "post_status", rename_all = "lowercase")]
 pub enum PostStatus {
@@ -22,6 +37,19 @@ pub enum PostStatus {
     Removed,
     Deleted,
     Spam,
+}
+
+impl FromStr for PostStatus {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "active" | "Active" => Ok(PostStatus::Active),
+            "deleted" | "Deleted" => Ok(PostStatus::Deleted),
+            "removed" | "Removed" => Ok(PostStatus::Removed),
+            "spam" | "Spam" => Ok(PostStatus::Spam),
+            _ => Err(format!("Unknown PostStatus: {}", s)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, sqlx::Decode)]

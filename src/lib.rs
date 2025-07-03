@@ -181,8 +181,14 @@ pub fn create_app(state: AppState) -> Router {
             post(handlers::communities::create_community_flair),
         )
         // Post routes
-        .route("/api/posts", post(handlers::posts::create_post))
-        .route("/api/posts/{post_id}", put(handlers::posts::update_post))
+        .route(
+            "/api/posts",
+            post(handlers::posts::create_post).get(handlers::posts::get_posts),
+        )
+        .route(
+            "/api/posts/{post_id}",
+            put(handlers::posts::update_post).get(handlers::posts::get_post),
+        )
         .route("/api/posts/{post_id}", delete(handlers::posts::delete_post))
         .route(
             "/api/posts/{post_id}/vote",
@@ -205,7 +211,7 @@ pub fn create_app(state: AppState) -> Router {
         .route("/api/comments", post(handlers::comments::create_comment))
         .route(
             "/api/comments/{comment_id}",
-            put(handlers::comments::update_comment),
+            put(handlers::comments::update_comment).get(handlers::comments::get_comment),
         )
         .route(
             "/api/comments/{comment_id}",
@@ -222,6 +228,10 @@ pub fn create_app(state: AppState) -> Router {
         .route(
             "/api/comments/{comment_id}/save",
             delete(handlers::comments::unsave_comment),
+        )
+        .route(
+            "/api/{post_id}/comments",
+            get(handlers::comments::get_post_comments),
         )
         .route(
             "/api/comments/{comment_id}/report",
